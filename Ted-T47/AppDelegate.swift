@@ -13,12 +13,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    // NOTE: (Ted)  As you are aware, Xcode generates these as a consequence of making a default project.
+    //
+    //              But I want you to start poking at the sides a little and asking some questions.
+    //              
+    //              For example, what happens if you delete the function directly below this comment?
+    //              Why do you get that reponse?
+    //              Is there a way to run your app without an App Delegate? What are the advantages and disadvantages of that?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         return true
     }
 
+
+    // NOTE: (Ted)  Similarly, what happens if you remove the method below this line? Is there a consequence?
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
