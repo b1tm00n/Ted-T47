@@ -10,7 +10,10 @@ import SpriteKit
 import GameplayKit
 
 enum BodyType:UInt32 {
-    
+
+// NOTE: (Ted)  Why are these cases powers of two? What happens if they aren't?
+//              What sort of collision system would have to exist for such a thing
+//              to be valuable?
 case ship = 1
 case asteroid = 2
 case bullet = 4
@@ -21,8 +24,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var ship:SKSpriteNode = SKSpriteNode()
     let rotateRec = UIRotationGestureRecognizer()
-    
-    let tapRec = UITapGestureRecognizer()
     
     var offset:CGFloat = 0
     let length:CGFloat = 200
@@ -44,50 +45,59 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if let someShip:SKSpriteNode = self.childNode(withName: "Ship") as? SKSpriteNode {
             
             ship = someShip
+
+            // NOTE:(Ted)   Here's another place where physicsBody need not be an optional.
+            //              You can set one up first, and then set it as a property.
             ship.physicsBody?.categoryBitMask = BodyType.ship.rawValue
             ship.physicsBody?.collisionBitMask = 0
             ship.physicsBody?.contactTestBitMask = BodyType.asteroid.rawValue
             
         }
         
-        
-        
         rotateRec.addTarget(self, action: #selector(GameScene.rotatedView(_:) ))
-        self.view!.addGestureRecognizer(rotateRec)
         
-        self.view!.isMultipleTouchEnabled = true
-        self.view!.isUserInteractionEnabled = true
-        
+        let tapRec = UITapGestureRecognizer()
         tapRec.addTarget(self, action: #selector(GameScene.tappedView(_:) ))
         tapRec.numberOfTouchesRequired = 1
         tapRec.numberOfTapsRequired = 1
-        self.view!.addGestureRecognizer(tapRec)
+
+        if let sceneView = self.view
+        {
+            sceneView.addGestureRecognizer(tapRec)
+            sceneView.addGestureRecognizer(rotateRec)
+            sceneView.isMultipleTouchEnabled = true
+            sceneView.isUserInteractionEnabled = true
+        } else
+        {
+            assertionFailure("For some reason the scene doesn't have a view, and this is required in order to run the game")
+        }
         
         halfWidth = self.frame.width / 2
         halfHeight = self.frame.height / 2
     
         createAsteroid()
-    
     }
     
     func createAsteroid() {
         
         if (asteroidsInScene < maxAsteroids) {
             
-           //
-            
             var image:String = ""
             let i:Int = Int( arc4random_uniform(3) )
-            
+       
+            // NOTE: (Ted)  Again, this just makes it so you only need to make this change in one place.
+            //              If you ever need to change it in the future.
+            let namePrefix = "Asteroid"
+
             switch i {
                 case 0:
-                    image = "Asteroid1"
+                    image = "\(namePrefix)1"
                 
                 case 1:
-                    image = "Asteroid2"
+                    image = "\(namePrefix)2"
                 
                 default:
-                    image = "Asteroid3"
+                    image = "\(namePrefix)3"
                 
             }
 
@@ -119,16 +129,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     
-        
+    // NOTE: (Ted)  When running this game, I noticed that after rotating the screen,
+    //              the ship sometimes stretches to fill the aspect ratio of the screen
+    //              at the new orientation. It's worth looking into a fix for that.
     @objc func rotatedView(_ sender:UIRotationGestureRecognizer){
-
-        
         
         if (sender.state == .began) {
             
             // do anything you want when the rotation gesture has begun
             print("we began")
-
         
         }
         if ( sender.state == .changed) {
@@ -152,13 +161,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     @objc func tappedView(_ sender:UITapGestureRecognizer){
         
+        guard let view = self.view else
+        {
+            assertionFailure("It's impossible to respond to a tap if this has no view")
+            return
+        }
         
-        
-        let touchPoint:CGPoint = sender.location(in: self.view )
+        let touchPoint:CGPoint = sender.location(in: view )
         
         print( touchPoint.x )
         
-        if (touchPoint.x > (self.view?.frame.width)! / 2 ){
+        if (touchPoint.x > (view.frame.width/2) ){
             
             print("right side")
             boostShip()
@@ -167,21 +180,34 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             print("left side")
             fire()
         }
-
-        
-    
     
     }
+
+    // NOTE: (Ted)  It's common to split something like this out and make it a function.
+    //              I'm not saying it's necessarily a bad thing to do, but ask yourself this.
+    //              Does anything call this function more than once? Would it affect the app in
+    //              any negative way to just have this logic inline up in the tappedView function?
+    //
+    //              Is the abstraction of a function really needed?
     func boostShip(){
-        
+       
+        guard let physicsBody = ship.physicsBody else
+        {
+            assertionFailure("The game shouldn't run if no physics body is set on the ship")
+            return
+        }
+
         let xVec:CGFloat = sin(theRotation) * -10
         let yVec:CGFloat = cos(theRotation) * 10
         
         let theVector:CGVector = CGVector(dx: xVec, dy: yVec)
-        
-        ship.physicsBody?.applyImpulse(theVector)
+        physicsBody.applyImpulse(theVector)
     
     }
+
+    // TODO: (Ted)  It seems to me that it's a basic requirement that the bullet
+    //              have a physics body. Can you make the app respond appropriately
+    //              for the unusual circumstance in which it does not?
     func fire(){
     
         let xOffset:CGFloat = sin(theRotation) * -60
@@ -198,19 +224,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let theVector:CGVector = CGVector(dx: xVec, dy: yVec)
         
         newBullet.physicsBody?.applyImpulse(theVector)
-        
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
     }
-    
+   
+    // NOTE: (Ted)  Having seen both mine and Casey's videos on 2D game engine development,
+    //              where do you think this function would have to be called? Clearly, something is calling it.
+    //              How was that thing setup? What does it need to do before this function is called and after
+    //              it is called?
+    //
+    //              What is the currentTime, and what does it represent? What is the average time interval between
+    //              one currentTime called in one update vs. the next one called in the next update? What is that tied to?
     override func update(_ currentTime: TimeInterval) {
 
         if (ship.position.x < -halfWidth){
@@ -253,7 +275,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 asteroidsInScene += 1
                 
                 someAsteroid.update()
-                
+               
+                // NOTE: (Ted)  70 is clearly an important number. Can you factor it out into a constant so you
+                //              only need to change it in one place?
                 if (someAsteroid.position.x < -halfWidth - 70){
                     
                     someAsteroid.position = CGPoint(x: halfWidth + 70, y:someAsteroid.position.y )
@@ -301,7 +325,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         for t in touches { self.touchDown(atPoint: t.location(in: self)) }
 
     }
-    
+   
+    // NOTE: (Ted)  Having seen my videos and Casey's, where in the series of events in a standard game loop might a function like this one get called?
+    //              What calls it? Does it happen before the update, after it, or perhaps as a part of it? How do you know?
     func didBegin(_ contact: SKPhysicsContact) {
         
         //asteroid colliding with bullet
@@ -343,11 +369,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func loseGame(){
         
-        if let scene = GameScene (fileNamed:"GameScene") {
+        if  let scene = GameScene (fileNamed:"GameScene"), 
+            let view = self.view
+        {
             
             let transition:SKTransition = SKTransition.push(with: .right, duration: 1)
-            self.view?.presentScene(scene, transition:transition )
+            view.presentScene(scene, transition:transition )
+        } else
+        {
+            assertionFailure("If there is no game scene file, the game shouldn't run")
         }
     }
-
 }

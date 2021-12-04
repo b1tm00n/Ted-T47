@@ -10,7 +10,10 @@ import Foundation
 import SpriteKit
 
 class Bullet:SKSpriteNode {
-    
+
+    // TODO: (Ted)  Do a similar transformation like what I did with the Asteroid class.
+    //              You know you have the physics body. Set it up first, and then set it as
+    //              a property of this instance (self).
     func setUp() {
         
         self.physicsBody = SKPhysicsBody(circleOfRadius: self.frame.size.width / 2)
